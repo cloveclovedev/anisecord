@@ -1,0 +1,11 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/
+uv.lock
+pyproject.toml
+AGENTS.md
+README.md
