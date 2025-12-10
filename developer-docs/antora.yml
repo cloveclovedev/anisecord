@@ -1,6 +1,5 @@
 name: ROOT
 version: ~
-title: Anisecode Developer Documentation
+title: Anisecord Developer Documentation
 nav:
-- modules/ROOT/nav.adoc
-
+  - modules/ROOT/nav.adoc

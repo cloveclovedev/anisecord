@@ -1,13 +1,12 @@
 site:
-  title: Anisecode Developer Documentation
+  title: Anisecord Developer Documentation
   start_page: ROOT::index.adoc
 content:
   sources:
-  - url: ..
-    branches: HEAD
-    start_path: developer-docs
+    - url: ..
+      branches: HEAD
+      start_path: developer-docs
 ui:
   bundle:
     url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
     snapshot: true
-
