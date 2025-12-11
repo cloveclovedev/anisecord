@@ -1,1 +1,7 @@
-
+* xref:architecture.adoc[Architecture Overview]
+* Features
+** xref:features/sns-x.adoc[SNS-X]
+* Core
+** xref:core/user.adoc[User]
+* Services
+** xref:services/discord.adoc[Discord]

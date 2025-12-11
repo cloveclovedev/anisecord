@@ -2,5 +2,8 @@
   "devDependencies": {
     "@antora/cli": "3.1.14",
     "@antora/site-generator": "3.1.14"
+  },
+  "dependencies": {
+    "asciidoctor-kroki": "^0.18.1"
   }
 }

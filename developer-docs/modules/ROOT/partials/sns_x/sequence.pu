@@ -1,0 +1,40 @@
+@startuml
+actor User
+participant "Bot (Cog)" as Cog
+participant "UserRepo" as UserRepo
+participant "DiscordRepo" as DiscordRepo
+participant "ConfigRepo" as ConfigRepo
+participant "SnsXDomain" as Domain
+participant "LLMRepo" as LLMRepo
+
+User -> Cog: /sns-x [date_from, date_to]
+activate Cog
+
+Cog -> UserRepo: get_user()
+activate UserRepo
+UserRepo --> Cog: User(timezone, language)
+deactivate UserRepo
+
+Cog -> ConfigRepo: get_config()
+activate ConfigRepo
+ConfigRepo --> Cog: SnsXConfig(persona)
+deactivate ConfigRepo
+
+Cog -> DiscordRepo: fetch_messages(range)
+activate DiscordRepo
+DiscordRepo --> Cog: List[DiscordPost]
+deactivate DiscordRepo
+
+Cog -> Domain: create_draft_prompt(messages, persona, language)
+activate Domain
+Domain --> Cog: prompt_string
+deactivate Domain
+
+Cog -> LLMRepo: generate_content(prompt)
+activate LLMRepo
+LLMRepo --> Cog: draft_content
+deactivate LLMRepo
+
+Cog -> User: Respond with Draft
+deactivate Cog
+@enduml

@@ -1,0 +1,29 @@
+= User
+
+The User Core module handles user-specific settings and feature access control.
+
+== Domain Model
+
+The `User` entity serves as the aggregate root for user context.
+
+[source,python]
+----
+@dataclass
+class User:
+    user_id: str
+    timezone: str = "Asia/Tokyo"  # Default timezone
+    language: str = "ja"          # Default language
+    allowed_features: tuple[str, ...] = ("sns-x", "nutrition")
+----
+
+== Feature Gating
+
+We employ a decorator-based approach to restrict access to specific features based on the User's allowed list.
+
+* **Decorator**: `@feature_enabled(feature_name: str)`
+* **Behavior**:
+  - Checks if `feature_name` is in `User.allowed_features`.
+  - Raises `FeatureAccessDenied` if not allowed.
+  - Returns `True` (allows execution) if allowed.
+
+This centralizes permission logic and keeps specific Features (Cogs) clean.
