@@ -7,7 +7,7 @@ from .domain import SnsXDomain, SnsXDraft, DiscordPost
 class SnsXRepository:
     def __init__(self):
         self.discord_service = DiscordService()
-        self.llm_service = LLMService(model_name="gemini/gemini-2.5-flash")
+        self.llm_service = LLMService()
         self.domain = SnsXDomain()
 
     def fetch_messages(self, channel_id: str, from_date: Union[datetime.date, datetime.datetime], to_date: Union[datetime.date, datetime.datetime]) -> List[DiscordPost]:

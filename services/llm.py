@@ -2,13 +2,14 @@ import os
 from litellm import completion
 
 class LLMService:
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str = "gemini/gemini-pro"):
         """
         Initialize the LLM Service.
         
         Args:
-            model_name (str): The model identifier for litellm (e.g. 'gemini/gemini-2.5-flash').
-                              Required.
+            model_name (str): The model identifier for litellm. 
+                              Default is 'gemini/gemini-pro'.
+                              Can be changed to 'gpt-4', 'claude-3-opus', etc.
         """
         self.model_name = model_name
         # litellm requires API keys to be set in environment variables
