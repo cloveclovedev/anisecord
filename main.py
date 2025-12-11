@@ -35,7 +35,19 @@ def hello_http(request):
     # Type 2: COMMAND
     if interaction_type == 2:
         command_name = req_json['data']['name']
+        
+        # Command Registry (Simple if/elif for now - can be scalable later)
+        if command_name == 'sns-x':
+            from commands.sns_x.controller import SnsXController
+            controller = SnsXController()
+            return jsonify(controller.execute(req_json))
+            
+        elif command_name == 'sns-x-today':
+            from commands.sns_x.controller import SnsXTodayController
+            controller = SnsXTodayController()
+            return jsonify(controller.execute(req_json))
 
+        # Legacy/Test Command
         if command_name == 'test':
             return jsonify({
                 'type': 4,

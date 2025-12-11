@@ -1,0 +1,20 @@
+@startuml
+participant User as user
+participant Anisecord as anisecord
+participant Discord as discord
+participant "Gemini API" as gemini
+participant Database as database
+
+user -> anisecord: /sns-x \nfrom: date, to: date
+anisecord -> discord: コマンドで指定された期間のポストを取得
+anisecord -> gemini: 取得したポストの内容を送信
+gemini -> anisecord: 仕事に関するポストを抽出しXへのポスト下書きを返す
+anisecord -> user: Xへのポスト下書きを送信
+loop
+  user -> anisecord: 修正内容を送信
+  anisecord -> gemini: 修正内容を送信
+  gemini -> anisecord: ユーザの指示に従って修正した下書きを返す
+  anisecord -> user: 修正した下書きを送信
+end
+user -> anisecord: 承認
+@enduml
