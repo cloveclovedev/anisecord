@@ -103,6 +103,7 @@ class SnsXController(BaseCommand):
     def __init__(self):
         self.feature_gate = FeatureGate()
         self.repository = SnsXRepository()
+        self.user_repository = UserRepository()
 
     def execute(self, interaction_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -130,9 +131,22 @@ class SnsXController(BaseCommand):
                 'data': {'content': 'Please provide both start and end dates.'}
             }
 
+        # Resolve Timezone
+        user = self.user_repository.get_user(user_id)
         try:
-            from_date = datetime.date.fromisoformat(from_str)
-            to_date = datetime.date.fromisoformat(to_str)
+            tz = ZoneInfo(user.timezone)
+        except Exception as e:
+            print(f"Warning: Invalid timezone '{user.timezone}' for user {user_id}: {e}. Defaulting to UTC.")
+            tz = datetime.timezone.utc
+
+        try:
+            from_date_raw = datetime.date.fromisoformat(from_str)
+            to_date_raw = datetime.date.fromisoformat(to_str)
+            
+            # Convert to datetime range in User's Timezone
+            from_date = datetime.datetime.combine(from_date_raw, datetime.time.min, tzinfo=tz)
+            to_date = datetime.datetime.combine(to_date_raw, datetime.time.max, tzinfo=tz)
+
         except ValueError:
             return {
                 'type': 4,
