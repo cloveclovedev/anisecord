@@ -1,10 +1,11 @@
 import os
-from discord import Intents
+from discord import Intents, Interaction, app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 
 from bot.core.health_server import start_health_server
 
+from bot.core.user.decorators import handle_permission_error
 
 class AnisecordBot(commands.Bot):
     """Anisecord Discord Bot with Extension support."""
@@ -27,10 +28,12 @@ class AnisecordBot(commands.Bot):
         """Called when the bot is starting up. Load extensions here."""
         print("Setting up bot extensions...")
         
+        # Set global error handler for app commands
+        self.tree.on_error = self.on_app_command_error
+        
         # Load OSS extensions
         oss_extensions = [
             'bot.features.common.basic_commands',
-            'bot.features.common.gemini_chat', 
             'bot.features.nutrition.cog'
         ]
         
@@ -47,6 +50,14 @@ class AnisecordBot(commands.Bot):
             print(f"Synced {len(synced)} application commands.")
         except Exception as e:
             print(f"Failed to sync commands: {e}")
+
+    async def on_app_command_error(self, interaction: Interaction, error: app_commands.AppCommandError):
+        """Global error handler for application commands."""
+        # Try to handle permission errors via User module
+        if await handle_permission_error(interaction, error):
+            return
+
+        print(f"Ignoring exception in command {interaction.command}: {error}")
     
     async def on_ready(self):
         """Called when the bot is ready."""

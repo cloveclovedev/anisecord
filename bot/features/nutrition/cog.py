@@ -42,6 +42,8 @@ Format your response EXACTLY as follows:
     return base_prompt
 
 
+from bot.core.user.decorators import feature_enabled
+
 class NutritionCoachCog(commands.Cog):
     """Nutrition coaching functionality using Gemini AI."""
     
@@ -53,6 +55,7 @@ class NutritionCoachCog(commands.Cog):
         )
 
     @app_commands.command(name="meal", description="Get nutrition coaching for your meal photos and/or description.")
+    @feature_enabled("nutrition")
     @app_commands.describe(
         description="Text description of the meal (optional if images are provided)",
         image1="First meal photo (optional)",
