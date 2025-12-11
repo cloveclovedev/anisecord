@@ -5,7 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "functions-framework>=3.10.0",
-    "pynacl>=1.6.1",
-    "requests>=2.32.5",
+    "discord-py>=2.6.2",
+    "fastapi[standard]>=0.116.1",
+    "httpx>=0.28.1",
+    "litellm>=1.76.1",
+    "python-dotenv>=1.1.1",
 ]
