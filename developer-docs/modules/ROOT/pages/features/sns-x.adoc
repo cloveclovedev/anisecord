@@ -1,4 +1,4 @@
-= SNS-X Feature
+= SNS-X
 
 The SNS-X feature generates engaging X (formerly Twitter) post drafts based on the Discord server's conversation history.
 
