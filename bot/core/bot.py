@@ -34,7 +34,8 @@ class AnisecordBot(commands.Bot):
         # Load OSS extensions
         oss_extensions = [
             'bot.features.common.basic_commands',
-            'bot.features.nutrition.cog'
+            'bot.features.nutrition.cog',
+            'bot.features.sns_x.cog'
         ]
         
         for extension in oss_extensions:

@@ -9,4 +9,4 @@ class UserRepository:
         In real app, this would fetch from DB.
         """
         # TODO: Implement DB fetch
-        return User(user_id=user_id)
+        return User(user_id=user_id, language="ja")

@@ -32,7 +32,8 @@ class LLMRepository:
             response = await litellm.acompletion(
                 model=self.model_name,
                 messages=messages,
-                api_key=self.api_key
+                api_key=self.api_key,
+                num_retries=3  # Retry on 503/Overload errors
             )
             return response.choices[0].message.content
         except Exception as e:
