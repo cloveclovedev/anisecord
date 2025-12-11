@@ -2,8 +2,8 @@
 actor User
 participant "Bot (Cog)" as Cog
 participant "UserRepo" as UserRepo
-participant "DiscordRepo" as DiscordRepo
 participant "ConfigRepo" as ConfigRepo
+participant "DiscordRepo" as DiscordRepo
 participant "SnsXDomain" as Domain
 participant "LLMRepo" as LLMRepo
 
