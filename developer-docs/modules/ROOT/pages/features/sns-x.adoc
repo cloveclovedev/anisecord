@@ -1,0 +1,40 @@
+= SNS-X Feature
+
+The SNS-X feature generates engaging X (formerly Twitter) post drafts based on the Discord server's conversation history.
+
+== Usage
+
+=== Commands
+
+==== `**/sns-x**`
+Generates a draft from a specified date range.
+
+[cols="1,3"]
+|===
+| Argument | Description
+| `date_from` | Start date (YYYY-MM-DD). Default: 24 hours ago.
+| `date_to` | End date (YYYY-MM-DD). Default: Now.
+| `language` | Output language (e.g., `ja`, `en`). Default: User setting.
+|===
+
+==== `**/sns-x-today**`
+Generates a draft for messages posted "Today" (from 00:00 to now, based on User's timezone).
+
+== Architecture
+
+The following sequence diagram illustrates the flow when a user requests a draft generation.
+
+[plantuml, format="svg"]
+----
+include::partial$sns_x/sequence.pu[]
+----
+
+== Configuration
+
+This feature supports configurable personas to ensure the generated tone matches the brand voice.
+
+[cols="1,3"]
+|===
+| Item | Description
+| `persona` | Defines how the bot should act (e.g., "Official Account", "Friendly").
+|===

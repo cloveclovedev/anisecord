@@ -1,0 +1,42 @@
+= Architecture Overview
+
+Anisecord follows a modular, feature-centric architecture designed to separate business logic from Discord infrastructure.
+
+== Directory Structure
+
+[source]
+----
+bot/
+├── core/                  # Core infrastructure and shared functionality
+│   ├── bot.py             # Main Bot class (extensions loading, error handling)
+│   ├── config.py          # Environment configuration
+│   └── user/              # User Domain (Settings, Feature Gating)
+├── features/              # Self-contained business features
+│   ├── nutrition/         # Nutrition Coach Logic
+│   └── sns_x/             # SNS-X (Twitter Draft) Logic
+└── services/              # Shared Services and Adapters
+    ├── discord/           # Discord API Data Access
+    └── llm/               # LLM Provider Access (Gemini via litellm)
+----
+
+== Module Responsibilities
+
+=== Core (`bot/core`)
+Handles the bot's lifecycle, global configuration, and fundamental domain concepts like `User` management. It provides the foundation for all other features.
+
+=== Features (`bot/features`)
+Contains the specific business capabilities of the bot. Each feature is a self-contained module.
+
+=== Services (`bot/services`)
+Provides reusable wrappers around external systems (Discord API, LLM Providers). This layer allows different features to access these systems in a consistent, decoupled way.
+
+== Layer Design
+
+Within each Feature or Service, we adhere to a simplified Domain-Driven Design (DDD) approach:
+
+[cols="1,3"]
+|===
+| **Cog (Controller)** | Orchestrates the flow. Receives user input (interactions), calls Repositories to fetch data, uses Domain logic to process it, and sends responses back to the user.
+| **Domain** | Contains pure logic and data structures. It defines "how" to process data (e.g., formatting a prompt) but knows nothing about where data comes from (Database/API).
+| **Repository** | Handles data fetching and persistence. It acts as an interface to external worlds (Discord History, Database, LLMs).
+|===

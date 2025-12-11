@@ -1,0 +1,41 @@
+= Discord
+
+The Discord Service (`bot/services/discord`) provides a centralized, reusable way to access Discord data, abstracting away the complexity of the `discord.py` library for common tasks.
+
+== Domain Model
+
+We define a shared `DiscordPost` dataclass to represent messages in a unified format across the application.
+
+[source,python]
+----
+@dataclass(frozen=True)
+class DiscordPost:
+    author_name: str
+    content: str
+    posted_at: datetime.datetime
+    message_id: str
+    thread_name: Optional[str]  # Name of the thread if the message belongs to one
+    attachment_urls: List[str]
+----
+
+== Repository
+
+The `DiscordRepository` provides utility methods for data fetching.
+
+=== `fetch_messages`
+Fetches a list of `DiscordPost` objects from a channel within a specific timeframe.
+
+* **Capabilities**:
+** **Main Channel**: Fetches standard messages.
+** **Threads**: Automatically iterates through active and relevant archived threads.
+** **Context**: Adds thread context to messages originating from threads.
+** **Timezone Aware**: Handles timezone-aware datetimes correctly (UTC normalization).
+
+[source,python]
+----
+messages = await repository.fetch_messages(
+    channel=interaction.channel, 
+    after=yesterday, 
+    before=today
+)
+----
