@@ -1,8 +1,8 @@
-from datetime import date
+from datetime import date, datetime
 
 from aioresponses import aioresponses
 
-from bot.services.github.domain import GitHubMilestone
+from bot.services.github.domain import GitHubIssue, GitHubMilestone
 from bot.services.github.repository import GitHubRepository
 
 API_BASE = "https://api.github.com"
@@ -31,6 +31,67 @@ SAMPLE_MILESTONES = [
         "open_issues": 5,
         "closed_issues": 0,
         "state": "open",
+    },
+]
+
+SAMPLE_MILESTONE_RAW = {
+    "number": 1,
+    "title": "v1.0",
+    "due_on": "2026-03-01T08:00:00Z",
+    "open_issues": 3,
+    "closed_issues": 7,
+    "state": "open",
+}
+
+SAMPLE_ISSUES = [
+    {
+        "number": 10,
+        "title": "Add auth",
+        "state": "open",
+        "labels": [{"name": "enhancement"}, {"name": "priority:high"}],
+        "milestone": SAMPLE_MILESTONE_RAW,
+        "html_url": "https://github.com/owner/repo1/issues/10",
+        "created_at": "2026-02-10T12:00:00Z",
+        "updated_at": "2026-02-14T15:30:00Z",
+        "pull_request": None,
+    },
+    {
+        "number": 11,
+        "title": "Fix typo",
+        "state": "open",
+        "labels": [],
+        "milestone": SAMPLE_MILESTONE_RAW,
+        "html_url": "https://github.com/owner/repo1/issues/11",
+        "created_at": "2026-02-12T09:00:00Z",
+        "updated_at": "2026-02-12T09:00:00Z",
+    },
+]
+
+SAMPLE_ISSUES_WITH_PR = [
+    {
+        "number": 12,
+        "title": "A pull request",
+        "state": "open",
+        "labels": [],
+        "milestone": SAMPLE_MILESTONE_RAW,
+        "html_url": "https://github.com/owner/repo1/pull/12",
+        "created_at": "2026-02-13T10:00:00Z",
+        "updated_at": "2026-02-13T10:00:00Z",
+        "pull_request": {"url": "https://api.github.com/repos/owner/repo1/pulls/12"},
+    },
+    SAMPLE_ISSUES[0],
+]
+
+SAMPLE_BACKLOG_ISSUES = [
+    {
+        "number": 20,
+        "title": "Refactor utils",
+        "state": "open",
+        "labels": [{"name": "tech-debt"}],
+        "milestone": None,
+        "html_url": "https://github.com/owner/repo1/issues/20",
+        "created_at": "2026-01-05T08:00:00Z",
+        "updated_at": "2026-02-01T10:00:00Z",
     },
 ]
 
@@ -115,3 +176,51 @@ class TestFetchMilestones:
             milestones = await repo.fetch_milestones("owner/repo1")
 
         assert milestones == []
+
+
+class TestFetchIssuesByMilestone:
+    async def test_returns_issues_for_milestone(self):
+        repo = make_repo()
+        with aioresponses() as m:
+            m.get(
+                f"{API_BASE}/repos/owner/repo1/issues?milestone=1&state=open",
+                payload=SAMPLE_ISSUES,
+            )
+            issues = await repo.fetch_issues_by_milestone("owner/repo1", 1)
+
+        assert len(issues) == 2
+        assert issues[0].number == 10
+        assert issues[0].title == "Add auth"
+        assert issues[0].repo == "owner/repo1"
+        assert issues[0].labels == ("enhancement", "priority:high")
+        assert issues[0].milestone is not None
+        assert issues[0].milestone.title == "v1.0"
+
+    async def test_filters_out_pull_requests(self):
+        repo = make_repo()
+        with aioresponses() as m:
+            m.get(
+                f"{API_BASE}/repos/owner/repo1/issues?milestone=1&state=open",
+                payload=SAMPLE_ISSUES_WITH_PR,
+            )
+            issues = await repo.fetch_issues_by_milestone("owner/repo1", 1)
+
+        # PR (number 12) should be excluded
+        assert len(issues) == 1
+        assert issues[0].number == 10
+
+
+class TestFetchIssuesWithoutMilestone:
+    async def test_returns_backlog_issues(self):
+        repo = make_repo()
+        with aioresponses() as m:
+            m.get(
+                f"{API_BASE}/repos/owner/repo1/issues?assignee=%2A&milestone=none&state=open",
+                payload=SAMPLE_BACKLOG_ISSUES,
+            )
+            issues = await repo.fetch_issues_without_milestone("owner/repo1")
+
+        assert len(issues) == 1
+        assert issues[0].number == 20
+        assert issues[0].milestone is None
+        assert issues[0].labels == ("tech-debt",)

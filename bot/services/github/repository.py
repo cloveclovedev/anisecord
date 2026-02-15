@@ -38,6 +38,38 @@ def _to_milestone(data: dict) -> GitHubMilestone:
     )
 
 
+def _parse_datetime(value: str | None) -> datetime | None:
+    """Parse GitHub ISO 8601 datetime."""
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=ZoneInfo("UTC")
+        )
+    except ValueError:
+        logger.warning("Failed to parse datetime: %s", value)
+        return None
+
+
+def _to_issue(data: dict, repo: str) -> GitHubIssue:
+    milestone_data = data.get("milestone")
+    milestone = _to_milestone(milestone_data) if milestone_data else None
+
+    labels = tuple(label["name"] for label in data.get("labels", []))
+
+    return GitHubIssue(
+        number=data["number"],
+        title=data["title"],
+        repo=repo,
+        state=data.get("state", "open"),
+        labels=labels,
+        milestone=milestone,
+        url=data.get("html_url", ""),
+        created_at=_parse_datetime(data.get("created_at")),
+        updated_at=_parse_datetime(data.get("updated_at")),
+    )
+
+
 class GitHubRepository:
     def __init__(self, token: str, repos: list[str]):
         self._token = token
@@ -90,3 +122,33 @@ class GitHubRepository:
             "GET", f"/repos/{repo}/milestones", params={"state": "open", "sort": "due_on"}
         )
         return [_to_milestone(m) for m in data]
+
+    async def fetch_issues_by_milestone(
+        self, repo: str, milestone_number: int
+    ) -> list[GitHubIssue]:
+        """Fetch open issues for a specific milestone."""
+        data = await self._request(
+            "GET",
+            f"/repos/{repo}/issues",
+            params={"milestone": str(milestone_number), "state": "open"},
+        )
+        return [
+            _to_issue(item, repo)
+            for item in data
+            if "pull_request" not in item or item["pull_request"] is None
+        ]
+
+    async def fetch_issues_without_milestone(
+        self, repo: str
+    ) -> list[GitHubIssue]:
+        """Fetch open assigned issues without a milestone (Backlog)."""
+        data = await self._request(
+            "GET",
+            f"/repos/{repo}/issues",
+            params={"milestone": "none", "state": "open", "assignee": "*"},
+        )
+        return [
+            _to_issue(item, repo)
+            for item in data
+            if "pull_request" not in item or item["pull_request"] is None
+        ]
