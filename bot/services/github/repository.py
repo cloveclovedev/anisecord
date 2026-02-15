@@ -16,6 +16,28 @@ JST = ZoneInfo("Asia/Tokyo")
 _LINK_NEXT_RE = re.compile(r'<([^>]+)>;\s*rel="next"')
 
 
+def _parse_due_date(value: str | None) -> date | None:
+    """Parse GitHub milestone due_on to date."""
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").date()
+    except ValueError:
+        logger.warning("Failed to parse due_on: %s", value)
+        return None
+
+
+def _to_milestone(data: dict) -> GitHubMilestone:
+    return GitHubMilestone(
+        number=data["number"],
+        title=data["title"],
+        due_date=_parse_due_date(data.get("due_on")),
+        open_issues=data.get("open_issues", 0),
+        closed_issues=data.get("closed_issues", 0),
+        state=data.get("state", "open"),
+    )
+
+
 class GitHubRepository:
     def __init__(self, token: str, repos: list[str]):
         self._token = token
@@ -61,3 +83,10 @@ class GitHubRepository:
                         current_url = None
 
         return all_items
+
+    async def fetch_milestones(self, repo: str) -> list[GitHubMilestone]:
+        """Fetch open milestones for a repo."""
+        data = await self._request(
+            "GET", f"/repos/{repo}/milestones", params={"state": "open", "sort": "due_on"}
+        )
+        return [_to_milestone(m) for m in data]

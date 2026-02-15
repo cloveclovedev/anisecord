@@ -1,5 +1,8 @@
+from datetime import date
+
 from aioresponses import aioresponses
 
+from bot.services.github.domain import GitHubMilestone
 from bot.services.github.repository import GitHubRepository
 
 API_BASE = "https://api.github.com"
@@ -10,6 +13,26 @@ def make_repo(repos: list[str] | None = None) -> GitHubRepository:
         token="test_token",
         repos=repos or ["owner/repo1"],
     )
+
+
+SAMPLE_MILESTONES = [
+    {
+        "number": 1,
+        "title": "v1.0",
+        "due_on": "2026-03-01T08:00:00Z",
+        "open_issues": 3,
+        "closed_issues": 7,
+        "state": "open",
+    },
+    {
+        "number": 2,
+        "title": "v2.0",
+        "due_on": None,
+        "open_issues": 5,
+        "closed_issues": 0,
+        "state": "open",
+    },
+]
 
 
 class TestRequest:
@@ -48,3 +71,47 @@ class TestRequest:
             result = await repo._request("GET", "/test")
 
         assert result == [{"id": 1}]
+
+
+class TestFetchMilestones:
+    async def test_returns_milestone_list(self):
+        repo = make_repo()
+        with aioresponses() as m:
+            m.get(
+                f"{API_BASE}/repos/owner/repo1/milestones?state=open&sort=due_on",
+                payload=SAMPLE_MILESTONES,
+            )
+            milestones = await repo.fetch_milestones("owner/repo1")
+
+        assert len(milestones) == 2
+        assert milestones[0] == GitHubMilestone(
+            number=1,
+            title="v1.0",
+            due_date=date(2026, 3, 1),
+            open_issues=3,
+            closed_issues=7,
+            state="open",
+        )
+
+    async def test_milestone_with_no_due_date(self):
+        repo = make_repo()
+        with aioresponses() as m:
+            m.get(
+                f"{API_BASE}/repos/owner/repo1/milestones?state=open&sort=due_on",
+                payload=SAMPLE_MILESTONES,
+            )
+            milestones = await repo.fetch_milestones("owner/repo1")
+
+        assert milestones[1].due_date is None
+        assert milestones[1].title == "v2.0"
+
+    async def test_empty_milestones(self):
+        repo = make_repo()
+        with aioresponses() as m:
+            m.get(
+                f"{API_BASE}/repos/owner/repo1/milestones?state=open&sort=due_on",
+                payload=[],
+            )
+            milestones = await repo.fetch_milestones("owner/repo1")
+
+        assert milestones == []
