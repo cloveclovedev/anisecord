@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import patch
 
-from bot.services.github.domain import GitHubMilestone
+from bot.services.github.domain import GitHubIssue, GitHubMilestone
 
 
 class TestGitHubMilestone:
@@ -70,3 +70,42 @@ class TestGitHubMilestone:
         mock_today.return_value = date(2026, 2, 15)
         ms = GitHubMilestone(number=1, title="v1.0", due_date=date(2026, 2, 15))
         assert ms.is_overdue is False
+
+
+class TestGitHubIssue:
+    def test_creation_minimal(self):
+        issue = GitHubIssue(number=42, title="Fix bug", repo="owner/repo1")
+        assert issue.number == 42
+        assert issue.title == "Fix bug"
+        assert issue.repo == "owner/repo1"
+        assert issue.state == "open"
+        assert issue.labels == ()
+        assert issue.milestone is None
+        assert issue.url == ""
+        assert issue.created_at is None
+        assert issue.updated_at is None
+
+    def test_creation_with_all_fields(self):
+        ms = GitHubMilestone(number=1, title="v1.0")
+        issue = GitHubIssue(
+            number=99,
+            title="Add feature",
+            repo="owner/repo2",
+            state="open",
+            labels=("enhancement", "priority:high"),
+            milestone=ms,
+            url="https://github.com/owner/repo2/issues/99",
+            created_at=datetime(2026, 2, 10, 12, 0),
+            updated_at=datetime(2026, 2, 14, 15, 30),
+        )
+        assert issue.milestone.title == "v1.0"
+        assert issue.labels == ("enhancement", "priority:high")
+        assert "repo2" in issue.url
+
+    def test_frozen(self):
+        issue = GitHubIssue(number=1, title="t", repo="o/r")
+        try:
+            issue.title = "changed"
+            assert False, "Should be frozen"
+        except AttributeError:
+            pass

@@ -29,3 +29,16 @@ class GitHubMilestone:
         if self.due_date is None:
             return False
         return self.due_date < _today()
+
+
+@dataclass(frozen=True)
+class GitHubIssue:
+    number: int
+    title: str
+    repo: str
+    state: str = "open"
+    labels: tuple[str, ...] = ()
+    milestone: Optional[GitHubMilestone] = None
+    url: str = ""
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
