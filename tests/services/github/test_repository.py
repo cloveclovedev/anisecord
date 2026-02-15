@@ -1,5 +1,3 @@
-import re
-
 from aioresponses import aioresponses
 
 from bot.services.github.repository import GitHubRepository
@@ -15,7 +13,7 @@ def make_repo(repos: list[str] | None = None) -> GitHubRepository:
 
 
 class TestRequest:
-    async def test_sends_auth_header(self):
+    async def test_basic_request(self):
         repo = make_repo()
         with aioresponses() as m:
             m.get(f"{API_BASE}/test", payload={"ok": True})
