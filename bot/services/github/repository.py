@@ -152,3 +152,19 @@ class GitHubRepository:
             for item in data
             if "pull_request" not in item or item["pull_request"] is None
         ]
+
+    async def fetch_actionable_issues(self) -> list[GitHubIssue]:
+        """Fetch all planning-relevant issues across all configured repos."""
+        all_issues: list[GitHubIssue] = []
+
+        for repo in self._repos:
+            milestones = await self.fetch_milestones(repo)
+
+            for ms in milestones:
+                issues = await self.fetch_issues_by_milestone(repo, ms.number)
+                all_issues.extend(issues)
+
+            backlog = await self.fetch_issues_without_milestone(repo)
+            all_issues.extend(backlog)
+
+        return all_issues

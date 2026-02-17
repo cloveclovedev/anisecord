@@ -95,6 +95,30 @@ SAMPLE_BACKLOG_ISSUES = [
     },
 ]
 
+SAMPLE_MILESTONES_REPO2 = [
+    {
+        "number": 1,
+        "title": "MVP",
+        "due_on": "2026-04-01T08:00:00Z",
+        "open_issues": 2,
+        "closed_issues": 0,
+        "state": "open",
+    },
+]
+
+SAMPLE_ISSUES_REPO2 = [
+    {
+        "number": 5,
+        "title": "Setup CI",
+        "state": "open",
+        "labels": [{"name": "infra"}],
+        "milestone": SAMPLE_MILESTONES_REPO2[0],
+        "html_url": "https://github.com/owner/repo2/issues/5",
+        "created_at": "2026-02-11T08:00:00Z",
+        "updated_at": "2026-02-11T08:00:00Z",
+    },
+]
+
 
 class TestRequest:
     async def test_basic_request(self):
@@ -224,3 +248,51 @@ class TestFetchIssuesWithoutMilestone:
         assert issues[0].number == 20
         assert issues[0].milestone is None
         assert issues[0].labels == ("tech-debt",)
+
+
+class TestFetchActionableIssues:
+    async def test_aggregates_across_repos(self):
+        repo = make_repo(repos=["owner/repo1", "owner/repo2"])
+
+        with aioresponses() as m:
+            # repo1 milestones + issues
+            m.get(f"{API_BASE}/repos/owner/repo1/milestones?state=open&sort=due_on", payload=[SAMPLE_MILESTONES[0]])
+            m.get(f"{API_BASE}/repos/owner/repo1/issues?milestone=1&state=open", payload=SAMPLE_ISSUES)
+            m.get(f"{API_BASE}/repos/owner/repo1/issues?milestone=none&state=open&assignee=%2A", payload=SAMPLE_BACKLOG_ISSUES)
+
+            # repo2 milestones + issues
+            m.get(f"{API_BASE}/repos/owner/repo2/milestones?state=open&sort=due_on", payload=SAMPLE_MILESTONES_REPO2)
+            m.get(f"{API_BASE}/repos/owner/repo2/issues?milestone=1&state=open", payload=SAMPLE_ISSUES_REPO2)
+            m.get(f"{API_BASE}/repos/owner/repo2/issues?milestone=none&state=open&assignee=%2A", payload=[])
+
+            issues = await repo.fetch_actionable_issues()
+
+        repos = {i.repo for i in issues}
+        assert repos == {"owner/repo1", "owner/repo2"}
+        # repo1: 2 milestone issues + 1 backlog = 3
+        # repo2: 1 milestone issue + 0 backlog = 1
+        assert len(issues) == 4
+
+    async def test_repo_with_no_milestones(self):
+        repo = make_repo(repos=["owner/empty"])
+
+        with aioresponses() as m:
+            m.get(f"{API_BASE}/repos/owner/empty/milestones?state=open&sort=due_on", payload=[])
+            m.get(f"{API_BASE}/repos/owner/empty/issues?milestone=none&state=open&assignee=%2A", payload=[])
+
+            issues = await repo.fetch_actionable_issues()
+
+        assert issues == []
+
+    async def test_single_repo(self):
+        repo = make_repo(repos=["owner/repo1"])
+
+        with aioresponses() as m:
+            m.get(f"{API_BASE}/repos/owner/repo1/milestones?state=open&sort=due_on", payload=[SAMPLE_MILESTONES[0]])
+            m.get(f"{API_BASE}/repos/owner/repo1/issues?milestone=1&state=open", payload=SAMPLE_ISSUES)
+            m.get(f"{API_BASE}/repos/owner/repo1/issues?milestone=none&state=open&assignee=%2A", payload=[])
+
+            issues = await repo.fetch_actionable_issues()
+
+        assert len(issues) == 2
+        assert all(i.repo == "owner/repo1" for i in issues)
