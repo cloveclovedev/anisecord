@@ -1,5 +1,5 @@
-from typing import Optional
 from .domain import User
+
 
 class UserRepository:
     def get_user(self, user_id: str) -> User:

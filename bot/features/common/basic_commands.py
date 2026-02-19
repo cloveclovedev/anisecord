@@ -11,10 +11,11 @@ class BasicCommandsCog(commands.Cog):
     @app_commands.command(name="ping", description="Test bot response time.")
     async def ping(self, interaction: Interaction):
         """Test bot response time."""
-        await interaction.response.send_message(f'Pong! ({round(self.bot.latency * 1000)}ms)')
+        await interaction.response.send_message(
+            f"Pong! ({round(self.bot.latency * 1000)}ms)"
+        )
 
 
 async def setup(bot):
     """Setup function to add the cog to the bot."""
     await bot.add_cog(BasicCommandsCog(bot))
-

@@ -30,13 +30,17 @@ class TestSubTaskStatus:
 
 class TestTickTickSubTask:
     def test_creation(self):
-        sub = TickTickSubTask(title="Buy milk", status=SubTaskStatus.ACTIVE, sort_order=0)
+        sub = TickTickSubTask(
+            title="Buy milk", status=SubTaskStatus.ACTIVE, sort_order=0
+        )
         assert sub.title == "Buy milk"
         assert sub.status == SubTaskStatus.ACTIVE
         assert sub.sort_order == 0
 
     def test_frozen(self):
-        sub = TickTickSubTask(title="Buy milk", status=SubTaskStatus.ACTIVE, sort_order=0)
+        sub = TickTickSubTask(
+            title="Buy milk", status=SubTaskStatus.ACTIVE, sort_order=0
+        )
         try:
             sub.title = "changed"
             assert False, "Should be frozen"
@@ -68,7 +72,9 @@ class TestTickTickTask:
     def test_creation_with_all_fields(self):
         from datetime import datetime
 
-        sub = TickTickSubTask(title="Step 1", status=SubTaskStatus.COMPLETED, sort_order=0)
+        sub = TickTickSubTask(
+            title="Step 1", status=SubTaskStatus.COMPLETED, sort_order=0
+        )
         task = TickTickTask(
             id="task2",
             title="Full task",
@@ -93,8 +99,13 @@ class TestTickTickTask:
 
     def test_frozen(self):
         task = TickTickTask(
-            id="t", title="t", project_id="p", project_name="P",
-            status=TaskStatus.ACTIVE, priority=TaskPriority.NONE, is_overdue=False,
+            id="t",
+            title="t",
+            project_id="p",
+            project_name="P",
+            status=TaskStatus.ACTIVE,
+            priority=TaskPriority.NONE,
+            is_overdue=False,
         )
         try:
             task.title = "changed"

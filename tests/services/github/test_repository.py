@@ -1,8 +1,8 @@
-from datetime import date, datetime
+from datetime import date
 
 from aioresponses import aioresponses
 
-from bot.services.github.domain import GitHubIssue, GitHubMilestone
+from bot.services.github.domain import GitHubMilestone
 from bot.services.github.repository import GitHubRepository
 
 API_BASE = "https://api.github.com"
@@ -143,7 +143,9 @@ class TestRequest:
                 page2_url,
                 payload=[{"number": 2}],
             )
-            result = await repo._request("GET", "/repos/owner/repo1/issues", params={"state": "open"})
+            result = await repo._request(
+                "GET", "/repos/owner/repo1/issues", params={"state": "open"}
+            )
 
         assert len(result) == 2
         assert result[0]["number"] == 1
@@ -256,14 +258,32 @@ class TestFetchActionableIssues:
 
         with aioresponses() as m:
             # repo1 milestones + issues
-            m.get(f"{API_BASE}/repos/owner/repo1/milestones?state=open&sort=due_on", payload=[SAMPLE_MILESTONES[0]])
-            m.get(f"{API_BASE}/repos/owner/repo1/issues?milestone=1&state=open", payload=SAMPLE_ISSUES)
-            m.get(f"{API_BASE}/repos/owner/repo1/issues?milestone=none&state=open&assignee=%2A", payload=SAMPLE_BACKLOG_ISSUES)
+            m.get(
+                f"{API_BASE}/repos/owner/repo1/milestones?state=open&sort=due_on",
+                payload=[SAMPLE_MILESTONES[0]],
+            )
+            m.get(
+                f"{API_BASE}/repos/owner/repo1/issues?milestone=1&state=open",
+                payload=SAMPLE_ISSUES,
+            )
+            m.get(
+                f"{API_BASE}/repos/owner/repo1/issues?milestone=none&state=open&assignee=%2A",
+                payload=SAMPLE_BACKLOG_ISSUES,
+            )
 
             # repo2 milestones + issues
-            m.get(f"{API_BASE}/repos/owner/repo2/milestones?state=open&sort=due_on", payload=SAMPLE_MILESTONES_REPO2)
-            m.get(f"{API_BASE}/repos/owner/repo2/issues?milestone=1&state=open", payload=SAMPLE_ISSUES_REPO2)
-            m.get(f"{API_BASE}/repos/owner/repo2/issues?milestone=none&state=open&assignee=%2A", payload=[])
+            m.get(
+                f"{API_BASE}/repos/owner/repo2/milestones?state=open&sort=due_on",
+                payload=SAMPLE_MILESTONES_REPO2,
+            )
+            m.get(
+                f"{API_BASE}/repos/owner/repo2/issues?milestone=1&state=open",
+                payload=SAMPLE_ISSUES_REPO2,
+            )
+            m.get(
+                f"{API_BASE}/repos/owner/repo2/issues?milestone=none&state=open&assignee=%2A",
+                payload=[],
+            )
 
             issues = await repo.fetch_actionable_issues()
 
@@ -277,8 +297,14 @@ class TestFetchActionableIssues:
         repo = make_repo(repos=["owner/empty"])
 
         with aioresponses() as m:
-            m.get(f"{API_BASE}/repos/owner/empty/milestones?state=open&sort=due_on", payload=[])
-            m.get(f"{API_BASE}/repos/owner/empty/issues?milestone=none&state=open&assignee=%2A", payload=[])
+            m.get(
+                f"{API_BASE}/repos/owner/empty/milestones?state=open&sort=due_on",
+                payload=[],
+            )
+            m.get(
+                f"{API_BASE}/repos/owner/empty/issues?milestone=none&state=open&assignee=%2A",
+                payload=[],
+            )
 
             issues = await repo.fetch_actionable_issues()
 
@@ -288,9 +314,18 @@ class TestFetchActionableIssues:
         repo = make_repo(repos=["owner/repo1"])
 
         with aioresponses() as m:
-            m.get(f"{API_BASE}/repos/owner/repo1/milestones?state=open&sort=due_on", payload=[SAMPLE_MILESTONES[0]])
-            m.get(f"{API_BASE}/repos/owner/repo1/issues?milestone=1&state=open", payload=SAMPLE_ISSUES)
-            m.get(f"{API_BASE}/repos/owner/repo1/issues?milestone=none&state=open&assignee=%2A", payload=[])
+            m.get(
+                f"{API_BASE}/repos/owner/repo1/milestones?state=open&sort=due_on",
+                payload=[SAMPLE_MILESTONES[0]],
+            )
+            m.get(
+                f"{API_BASE}/repos/owner/repo1/issues?milestone=1&state=open",
+                payload=SAMPLE_ISSUES,
+            )
+            m.get(
+                f"{API_BASE}/repos/owner/repo1/issues?milestone=none&state=open&assignee=%2A",
+                payload=[],
+            )
 
             issues = await repo.fetch_actionable_issues()
 
