@@ -23,7 +23,7 @@ def create_health_server(port: int = 8080) -> FastAPI:
         Returns only status code 200 OK without response body.
         """
         return Response(status_code=200)
-    
+
     return app
 
 
@@ -37,17 +37,18 @@ def run_fastapi_server(app: FastAPI, port: int):
 def start_health_server(port: int = 8080) -> threading.Thread:
     """
     Start the FastAPI health server in a background thread.
-    
+
     DESIGN PRINCIPLE: The health check server must not block the main bot process.
     Using a daemon thread is crucial. A daemon thread will exit automatically
     when the main thread (the bot) exits. This prevents a "zombie process"
     where the health check server stays alive after the bot has crashed.
     """
     app = create_health_server(port)
-    api_thread = threading.Thread(target=run_fastapi_server, args=(app, port), daemon=True)
+    api_thread = threading.Thread(
+        target=run_fastapi_server, args=(app, port), daemon=True
+    )
     api_thread.start()
-    
-    time.sleep(2)  # Allow time for the server to start
-    
-    return api_thread
 
+    time.sleep(2)  # Allow time for the server to start
+
+    return api_thread

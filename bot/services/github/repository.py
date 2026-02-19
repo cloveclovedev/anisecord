@@ -118,7 +118,9 @@ class GitHubRepository:
     async def fetch_milestones(self, repo: str) -> list[GitHubMilestone]:
         """Fetch open milestones for a repo."""
         data = await self._request(
-            "GET", f"/repos/{repo}/milestones", params={"state": "open", "sort": "due_on"}
+            "GET",
+            f"/repos/{repo}/milestones",
+            params={"state": "open", "sort": "due_on"},
         )
         return [_to_milestone(m) for m in data]
 
@@ -137,9 +139,7 @@ class GitHubRepository:
             if "pull_request" not in item or item["pull_request"] is None
         ]
 
-    async def fetch_issues_without_milestone(
-        self, repo: str
-    ) -> list[GitHubIssue]:
+    async def fetch_issues_without_milestone(self, repo: str) -> list[GitHubIssue]:
         """Fetch open assigned issues without a milestone (Backlog)."""
         data = await self._request(
             "GET",

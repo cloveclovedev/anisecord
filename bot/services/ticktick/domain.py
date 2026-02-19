@@ -6,6 +6,7 @@ from typing import Optional
 
 class TaskPriority(IntEnum):
     """TickTick API priority values."""
+
     NONE = 0
     LOW = 1
     MEDIUM = 3
@@ -14,12 +15,14 @@ class TaskPriority(IntEnum):
 
 class TaskStatus(IntEnum):
     """TickTick API task status values."""
+
     ACTIVE = 0
     COMPLETED = 2
 
 
 class SubTaskStatus(IntEnum):
     """TickTick API subtask (checklist item) status values."""
+
     ACTIVE = 0
     COMPLETED = 1
 
