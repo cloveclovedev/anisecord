@@ -11,7 +11,6 @@ from .domain import GitHubIssue, GitHubMilestone
 logger = logging.getLogger(__name__)
 
 GITHUB_API_BASE = "https://api.github.com"
-JST = ZoneInfo("Asia/Tokyo")
 
 _LINK_NEXT_RE = re.compile(r'<([^>]+)>;\s*rel="next"')
 
