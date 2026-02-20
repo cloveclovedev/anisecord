@@ -9,4 +9,5 @@ class User:
     allowed_features: tuple[str, ...] = (
         "sns-x",
         "nutrition",
+        "daily-plan",
     )  # Default enabled for now
