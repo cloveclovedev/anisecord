@@ -63,6 +63,70 @@ class DiscordRepository:
 
         return posts
 
+    async def find_or_create_thread(
+        self,
+        channel: discord.TextChannel,
+        thread_name: str,
+    ) -> discord.Thread:
+        """Find an existing thread by name, or create a new one."""
+        # Check active threads
+        for thread in channel.threads:
+            if thread.name == thread_name:
+                return thread
+
+        # Check archived threads
+        try:
+            async for thread in channel.archived_threads(limit=50):
+                if thread.name == thread_name:
+                    if thread.archived:
+                        await thread.edit(archived=False)
+                    return thread
+        except Exception:
+            pass
+
+        # Create new thread
+        return await channel.create_thread(
+            name=thread_name,
+            type=discord.ChannelType.public_thread,
+        )
+
+    async def fetch_thread_messages(
+        self,
+        thread: discord.Thread,
+        limit: int = 100,
+    ) -> list[str]:
+        """Fetch message contents from a thread."""
+        messages = []
+        async for msg in thread.history(limit=limit, oldest_first=True):
+            messages.append(msg.content)
+        return messages
+
+    async def send_to_thread(
+        self,
+        thread: discord.Thread,
+        content: str,
+    ) -> None:
+        """Send a message to a thread, splitting if over Discord's 2000 char limit."""
+        if len(content) <= 2000:
+            await thread.send(content)
+            return
+
+        # Split on newlines, respecting the 2000 char limit
+        chunks = []
+        current = ""
+        for line in content.split("\n"):
+            if len(current) + len(line) + 1 > 1990:
+                if current:
+                    chunks.append(current)
+                current = line
+            else:
+                current = f"{current}\n{line}" if current else line
+        if current:
+            chunks.append(current)
+
+        for chunk in chunks:
+            await thread.send(chunk)
+
     def _to_discord_post(
         self, msg: discord.Message, thread_name: str = None
     ) -> DiscordPost:
