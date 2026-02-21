@@ -37,6 +37,7 @@ class AnisecordBot(commands.Bot):
             "bot.features.common.basic_commands",
             "bot.features.nutrition.cog",
             "bot.features.sns_x.cog",
+            "bot.features.daily_plan.cog",
         ]
 
         for extension in oss_extensions:
