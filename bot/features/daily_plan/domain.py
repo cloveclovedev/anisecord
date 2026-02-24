@@ -241,7 +241,7 @@ class GoogleCalendarContextSource:
 
 
 class DailyPlanPromptBuilder:
-    """Assembles the final LLM prompt from task source sections."""
+    """Assembles the final LLM prompt from task and context source sections."""
 
     @staticmethod
     def build_prompt(
@@ -249,6 +249,7 @@ class DailyPlanPromptBuilder:
         date_str: str,
         existing_messages: Optional[list[str]] = None,
         language: str = "ja",
+        context_sections: Optional[list[ContextSourceResult]] = None,
     ) -> str:
         prompt_parts = [
             f"You are a personal productivity assistant. Create a structured daily plan for {date_str}.",
@@ -259,6 +260,22 @@ class DailyPlanPromptBuilder:
             "Group related tasks and suggest a logical order for the day.",
             "",
         ]
+
+        # Context sections (schedule/constraints) come first
+        if context_sections:
+            prompt_parts.append(
+                "以下のスケジュールとカレンダー解釈ルールを考慮して、実現可能な計画を立ててください。"
+            )
+            prompt_parts.append(
+                "空き時間を把握し、タスクを現実的にスケジュールしてください。"
+            )
+            prompt_parts.append("")
+            prompt_parts.append("--- Schedule Context ---")
+            for ctx in context_sections:
+                prompt_parts.append(ctx.prompt_section)
+                prompt_parts.append("")
+            prompt_parts.append("--- End of Schedule Context ---")
+            prompt_parts.append("")
 
         if existing_messages:
             prompt_parts.append("--- Previous messages in today's thread ---")

@@ -253,6 +253,61 @@ class TestDailyPlanPromptBuilder:
         assert "2026-02-20" in prompt
         assert "No tasks found" in prompt
 
+    def test_build_prompt_includes_context_before_tasks(self):
+        task_sections = [
+            TaskSourceResult(
+                source_name="ticktick",
+                prompt_section="## TickTick\n- Task A",
+                item_count=1,
+            ),
+        ]
+        context_sections = [
+            ContextSourceResult(
+                source_name="google_calendar",
+                prompt_section="## 今日のスケジュール\n- 10:00-20:00 [Work] WRK",
+            ),
+        ]
+        prompt = DailyPlanPromptBuilder.build_prompt(
+            sections=task_sections,
+            context_sections=context_sections,
+            date_str="2026-02-23",
+        )
+        # Context should appear before tasks
+        context_pos = prompt.find("今日のスケジュール")
+        task_pos = prompt.find("TickTick")
+        assert context_pos < task_pos
+
+    def test_build_prompt_with_empty_context(self):
+        task_sections = [
+            TaskSourceResult(
+                source_name="ticktick",
+                prompt_section="## TickTick\n- Task A",
+                item_count=1,
+            ),
+        ]
+        prompt = DailyPlanPromptBuilder.build_prompt(
+            sections=task_sections,
+            context_sections=[],
+            date_str="2026-02-23",
+        )
+        assert "TickTick" in prompt
+        assert "Task A" in prompt
+
+    def test_build_prompt_includes_schedule_awareness_instruction(self):
+        context_sections = [
+            ContextSourceResult(
+                source_name="google_calendar",
+                prompt_section="## Schedule\n- 10:00 Work",
+            ),
+        ]
+        prompt = DailyPlanPromptBuilder.build_prompt(
+            sections=[],
+            context_sections=context_sections,
+            date_str="2026-02-23",
+        )
+        # Should instruct LLM to consider schedule constraints
+        assert "スケジュール" in prompt or "schedule" in prompt.lower()
+
 
 class TestContextSourceResult:
     def test_creation(self):
