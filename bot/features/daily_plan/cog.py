@@ -83,7 +83,8 @@ class DailyPlanCog(commands.Cog):
                 refresh_token=self._config.google_calendar_refresh_token,
             )
             config_path = (
-                Path(__file__).resolve().parent.parent.parent / "daily_plan_config.toml"
+                Path(__file__).resolve().parent.parent.parent.parent
+                / "daily_plan_config.toml"
             )
             calendar_context = load_calendar_context(config_path)
 

@@ -201,6 +201,11 @@ class GoogleCalendarContextSource:
             else:
                 week_events.setdefault(event_date, []).append(event)
 
+        # Sort events by start time within each group
+        today_events.sort(key=lambda e: e.start)
+        for d in week_events:
+            week_events[d].sort(key=lambda e: e.start)
+
         lines: list[str] = []
 
         # Today's schedule (detailed)

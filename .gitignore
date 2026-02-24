@@ -208,3 +208,6 @@ __marimo__/
 
 # Git worktrees
 .worktrees/
+
+# Daily plan config (contains personal calendar rules)
+daily_plan_config.toml
