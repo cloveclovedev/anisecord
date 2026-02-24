@@ -1,0 +1,12 @@
+# Calendar interpretation rules for /daily-plan LLM context.
+# The LLM uses these rules to understand what each calendar means
+# and determine available working time.
+
+[calendar]
+context = """
+clovecloveカレンダーは個人事業の作業時間。
+Workカレンダーは本業の時間。
+mkuriカレンダーは個人の予定。
+Sleepは睡眠時間。
+これらの情報から、今日使える作業時間を判断してタスクの優先順位を決めてください。
+"""

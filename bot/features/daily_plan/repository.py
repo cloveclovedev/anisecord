@@ -84,9 +84,15 @@ class DailyPlanConfigRepository:
                 r.strip() for r in github_repos_str.split(",") if r.strip()
             ),
             google_calendar_client_id=os.environ.get("GOOGLE_CALENDAR_CLIENT_ID", ""),
-            google_calendar_client_secret=os.environ.get("GOOGLE_CALENDAR_CLIENT_SECRET", ""),
-            google_calendar_access_token=os.environ.get("GOOGLE_CALENDAR_ACCESS_TOKEN", ""),
-            google_calendar_refresh_token=os.environ.get("GOOGLE_CALENDAR_REFRESH_TOKEN", ""),
+            google_calendar_client_secret=os.environ.get(
+                "GOOGLE_CALENDAR_CLIENT_SECRET", ""
+            ),
+            google_calendar_access_token=os.environ.get(
+                "GOOGLE_CALENDAR_ACCESS_TOKEN", ""
+            ),
+            google_calendar_refresh_token=os.environ.get(
+                "GOOGLE_CALENDAR_REFRESH_TOKEN", ""
+            ),
         )
 
 

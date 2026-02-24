@@ -191,7 +191,11 @@ class GoogleCalendarContextSource:
         week_events: dict[date, list[GoogleCalendarEvent]] = {}
 
         for event in events:
-            event_date = event.start.astimezone(tz).date() if not event.is_all_day else event.start.date()
+            event_date = (
+                event.start.astimezone(tz).date()
+                if not event.is_all_day
+                else event.start.date()
+            )
             if event_date == today:
                 today_events.append(event)
             else:

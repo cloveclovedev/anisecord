@@ -2,7 +2,10 @@ import time
 
 from aioresponses import aioresponses
 
-from bot.services.google_calendar.auth import GoogleCalendarAuth, GoogleCalendarAuthError
+from bot.services.google_calendar.auth import (
+    GoogleCalendarAuth,
+    GoogleCalendarAuthError,
+)
 
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 

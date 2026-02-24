@@ -319,9 +319,7 @@ class TestContextSourceResult:
         assert result.prompt_section == "## Schedule\n- 10:00 Meeting"
 
     def test_frozen(self):
-        result = ContextSourceResult(
-            source_name="test", prompt_section="text"
-        )
+        result = ContextSourceResult(source_name="test", prompt_section="text")
         try:
             result.source_name = "changed"
             assert False, "Should be frozen"
