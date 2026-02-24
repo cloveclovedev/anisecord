@@ -1,13 +1,17 @@
-from datetime import datetime
+from datetime import date, datetime
+from unittest.mock import AsyncMock
 from zoneinfo import ZoneInfo
 
 from bot.features.daily_plan.domain import (
+    ContextSourceResult,
     DailyPlanPromptBuilder,
     GitHubTaskSource,
+    GoogleCalendarContextSource,
     TaskSourceResult,
     TickTickTaskSource,
 )
 from bot.services.github.domain import GitHubIssue, GitHubMilestone
+from bot.services.google_calendar.domain import GoogleCalendarEvent, GoogleCalendarInfo
 from bot.services.ticktick.domain import (
     SubTaskStatus,
     TaskPriority,
@@ -15,6 +19,8 @@ from bot.services.ticktick.domain import (
     TickTickSubTask,
     TickTickTask,
 )
+
+JST = ZoneInfo("Asia/Tokyo")
 
 
 class TestTaskSourceResult:
@@ -166,8 +172,6 @@ class TestGitHubTaskSource:
         assert result.item_count == 0
 
     async def test_format_includes_milestone_due_date(self):
-        from datetime import date
-
         ms = self._make_milestone(due_date=date(2026, 3, 1))
         issue = self._make_issue(milestone=ms)
         result = GitHubTaskSource.format_issues([issue])
@@ -248,3 +252,136 @@ class TestDailyPlanPromptBuilder:
         )
         assert "2026-02-20" in prompt
         assert "No tasks found" in prompt
+
+
+class TestContextSourceResult:
+    def test_creation(self):
+        result = ContextSourceResult(
+            source_name="google_calendar",
+            prompt_section="## Schedule\n- 10:00 Meeting",
+        )
+        assert result.source_name == "google_calendar"
+        assert result.prompt_section == "## Schedule\n- 10:00 Meeting"
+
+    def test_frozen(self):
+        result = ContextSourceResult(
+            source_name="test", prompt_section="text"
+        )
+        try:
+            result.source_name = "changed"
+            assert False, "Should be frozen"
+        except AttributeError:
+            pass
+
+
+class TestGoogleCalendarContextSource:
+    def _make_event(self, **overrides) -> GoogleCalendarEvent:
+        defaults = dict(
+            id="ev1",
+            summary="Test Event",
+            calendar=GoogleCalendarInfo(id="cal1", summary="Work"),
+            start=datetime(2026, 2, 23, 10, 0, tzinfo=JST),
+            end=datetime(2026, 2, 23, 11, 0, tzinfo=JST),
+            is_all_day=False,
+            location=None,
+            status="confirmed",
+        )
+        defaults.update(overrides)
+        return GoogleCalendarEvent(**defaults)
+
+    def _make_source(
+        self,
+        events: list[GoogleCalendarEvent],
+        calendar_context: str = "",
+        today: date = date(2026, 2, 23),
+    ) -> GoogleCalendarContextSource:
+        repo = AsyncMock()
+        repo.fetch_events.return_value = events
+        return GoogleCalendarContextSource(
+            repository=repo,
+            calendar_context=calendar_context,
+            timezone="Asia/Tokyo",
+            today=today,
+        )
+
+    async def test_source_name(self):
+        source = self._make_source(events=[])
+        assert source.source_name == "google_calendar"
+
+    async def test_format_includes_calendar_name(self):
+        event = self._make_event(
+            calendar=GoogleCalendarInfo(id="cal1", summary="cloveclove"),
+        )
+        source = self._make_source(events=[event])
+        result = await source.fetch_and_format()
+        assert "[cloveclove]" in result.prompt_section
+
+    async def test_format_includes_event_time_and_title(self):
+        event = self._make_event(
+            summary="WRK | @品川",
+            start=datetime(2026, 2, 23, 10, 30, tzinfo=JST),
+            end=datetime(2026, 2, 23, 20, 0, tzinfo=JST),
+        )
+        source = self._make_source(events=[event])
+        result = await source.fetch_and_format()
+        assert "10:30" in result.prompt_section
+        assert "20:00" in result.prompt_section
+        assert "WRK | @品川" in result.prompt_section
+
+    async def test_format_all_day_event(self):
+        event = self._make_event(
+            summary="Emperor's Birthday",
+            is_all_day=True,
+        )
+        source = self._make_source(events=[event])
+        result = await source.fetch_and_format()
+        assert "終日" in result.prompt_section
+
+    async def test_format_separates_today_and_rest_of_week(self):
+        today_event = self._make_event(
+            summary="Today Event",
+            start=datetime(2026, 2, 23, 10, 0, tzinfo=JST),
+            end=datetime(2026, 2, 23, 11, 0, tzinfo=JST),
+        )
+        tomorrow_event = self._make_event(
+            id="ev2",
+            summary="Tomorrow Event",
+            start=datetime(2026, 2, 24, 14, 0, tzinfo=JST),
+            end=datetime(2026, 2, 24, 15, 0, tzinfo=JST),
+        )
+        source = self._make_source(events=[today_event, tomorrow_event])
+        result = await source.fetch_and_format()
+        today_pos = result.prompt_section.find("Today Event")
+        tomorrow_pos = result.prompt_section.find("Tomorrow Event")
+        assert today_pos < tomorrow_pos
+
+    async def test_format_includes_calendar_context(self):
+        event = self._make_event()
+        context = "clovecloveカレンダーは個人事業の作業時間。"
+        source = self._make_source(events=[event], calendar_context=context)
+        result = await source.fetch_and_format()
+        assert "clovecloveカレンダーは個人事業の作業時間。" in result.prompt_section
+
+    async def test_format_empty_events(self):
+        source = self._make_source(events=[])
+        result = await source.fetch_and_format()
+        assert result.source_name == "google_calendar"
+
+    async def test_fetch_passes_correct_time_range(self):
+        """Verify the source requests today through end-of-week."""
+        repo = AsyncMock()
+        repo.fetch_events.return_value = []
+        source = GoogleCalendarContextSource(
+            repository=repo,
+            calendar_context="",
+            timezone="Asia/Tokyo",
+            today=date(2026, 2, 23),  # Monday
+        )
+        await source.fetch_and_format()
+
+        repo.fetch_events.assert_called_once()
+        call_args = repo.fetch_events.call_args
+        time_min = call_args.kwargs["time_min"]
+        time_max = call_args.kwargs["time_max"]
+        assert time_min.date() == date(2026, 2, 23)
+        assert time_max.date() >= date(2026, 2, 28)
