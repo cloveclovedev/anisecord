@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from discord import Interaction, app_commands
@@ -9,17 +10,21 @@ from discord.ext import commands, tasks
 from bot.core.user.decorators import feature_enabled
 from bot.services.discord.repository import DiscordRepository
 from bot.services.github.repository import GitHubRepository
+from bot.services.google_calendar.auth import GoogleCalendarAuth
+from bot.services.google_calendar.repository import GoogleCalendarRepository
 from bot.services.llm.repository import LLMRepository
 from bot.services.ticktick.auth import TickTickAuth
 from bot.services.ticktick.repository import TickTickRepository
 
 from .domain import (
+    ContextSource,
     DailyPlanPromptBuilder,
     GitHubTaskSource,
+    GoogleCalendarContextSource,
     TaskSource,
     TickTickTaskSource,
 )
-from .repository import DailyPlanConfigRepository
+from .repository import DailyPlanConfigRepository, load_calendar_context
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +49,8 @@ class DailyPlanCog(commands.Cog):
         # Build task sources based on config
         self._sources: list[TaskSource] = []
         self._init_sources()
+        self._context_sources: list[ContextSource] = []
+        self._init_context_sources()
 
     def _init_sources(self) -> None:
         """Initialize enabled task sources."""
@@ -63,6 +70,26 @@ class DailyPlanCog(commands.Cog):
                         token=self._config.github_token,
                         repos=list(self._config.github_repos),
                     )
+                )
+            )
+
+    def _init_context_sources(self) -> None:
+        """Initialize enabled context sources."""
+        if self._config.has_source("google_calendar"):
+            auth = GoogleCalendarAuth(
+                client_id=self._config.google_calendar_client_id,
+                client_secret=self._config.google_calendar_client_secret,
+                access_token=self._config.google_calendar_access_token,
+                refresh_token=self._config.google_calendar_refresh_token,
+            )
+            config_path = Path(__file__).resolve().parent.parent.parent / "daily_plan_config.toml"
+            calendar_context = load_calendar_context(config_path)
+
+            self._context_sources.append(
+                GoogleCalendarContextSource(
+                    repository=GoogleCalendarRepository(auth),
+                    calendar_context=calendar_context,
+                    timezone=self._config.timezone,
                 )
             )
 
@@ -140,21 +167,35 @@ class DailyPlanCog(commands.Cog):
         thread_name = config.thread_format.format(date=date_str)
 
         # 1. Fetch from all sources concurrently
-        results = await asyncio.gather(
-            *[source.fetch_and_format() for source in self._sources],
-            return_exceptions=True,
+        task_coros = [source.fetch_and_format() for source in self._sources]
+        context_coros = [source.fetch_and_format() for source in self._context_sources]
+
+        all_results = await asyncio.gather(
+            *task_coros, *context_coros, return_exceptions=True
         )
 
-        # Separate successes and failures
+        # Separate task results and context results
+        task_results_raw = all_results[: len(task_coros)]
+        context_results_raw = all_results[len(task_coros) :]
+
         sections = []
         errors = []
-        for i, result in enumerate(results):
+        for i, result in enumerate(task_results_raw):
             if isinstance(result, Exception):
                 source_name = self._sources[i].source_name
                 logger.error("Source %s failed: %s", source_name, result)
                 errors.append(source_name)
             else:
                 sections.append(result)
+
+        context_sections = []
+        for i, result in enumerate(context_results_raw):
+            if isinstance(result, Exception):
+                source_name = self._context_sources[i].source_name
+                logger.error("Context source %s failed: %s", source_name, result)
+                errors.append(source_name)
+            else:
+                context_sections.append(result)
 
         if not sections and not errors:
             return "⚠ No task sources are configured. Set DAILY_PLAN_SOURCES and credentials."
@@ -180,6 +221,7 @@ class DailyPlanCog(commands.Cog):
             sections=sections,
             date_str=date_str,
             existing_messages=existing_messages if existing_messages else None,
+            context_sections=context_sections if context_sections else None,
         )
 
         plan_text = await self.llm_repo.generate_content(prompt)
