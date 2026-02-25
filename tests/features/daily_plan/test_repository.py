@@ -95,3 +95,71 @@ class TestDailyPlanConfig:
             assert False, "Should be frozen"
         except AttributeError:
             pass
+
+
+class TestGoogleCalendarConfig:
+    def test_google_calendar_config_from_env(self):
+        env = {
+            "GOOGLE_CALENDAR_CLIENT_ID": "gc_cid",
+            "GOOGLE_CALENDAR_CLIENT_SECRET": "gc_csec",
+            "GOOGLE_CALENDAR_ACCESS_TOKEN": "gc_at",
+            "GOOGLE_CALENDAR_REFRESH_TOKEN": "gc_rt",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            repo = DailyPlanConfigRepository()
+            config = repo.get_config()
+
+        assert config.google_calendar_client_id == "gc_cid"
+        assert config.google_calendar_client_secret == "gc_csec"
+        assert config.google_calendar_access_token == "gc_at"
+        assert config.google_calendar_refresh_token == "gc_rt"
+
+    def test_has_source_google_calendar(self):
+        env = {
+            "DAILY_PLAN_SOURCES": "google_calendar",
+            "GOOGLE_CALENDAR_CLIENT_ID": "cid",
+            "GOOGLE_CALENDAR_CLIENT_SECRET": "csec",
+            "GOOGLE_CALENDAR_ACCESS_TOKEN": "at",
+            "GOOGLE_CALENDAR_REFRESH_TOKEN": "rt",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            config = DailyPlanConfigRepository().get_config()
+
+        assert config.has_source("google_calendar") is True
+
+    def test_has_source_google_calendar_missing_token(self):
+        env = {
+            "DAILY_PLAN_SOURCES": "google_calendar",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            config = DailyPlanConfigRepository().get_config()
+
+        assert config.has_source("google_calendar") is False
+
+
+class TestLoadCalendarContext:
+    def test_loads_context_from_toml(self, tmp_path):
+        toml_content = b'[calendar]\ncontext = "cloveclove is personal business."'
+        toml_file = tmp_path / "config.toml"
+        toml_file.write_bytes(toml_content)
+
+        from bot.features.daily_plan.repository import load_calendar_context
+
+        result = load_calendar_context(toml_file)
+        assert result == "cloveclove is personal business."
+
+    def test_returns_empty_when_file_missing(self, tmp_path):
+        from bot.features.daily_plan.repository import load_calendar_context
+
+        result = load_calendar_context(tmp_path / "nonexistent.toml")
+        assert result == ""
+
+    def test_returns_empty_when_no_calendar_section(self, tmp_path):
+        toml_content = b'[other]\nkey = "value"'
+        toml_file = tmp_path / "config.toml"
+        toml_file.write_bytes(toml_content)
+
+        from bot.features.daily_plan.repository import load_calendar_context
+
+        result = load_calendar_context(toml_file)
+        assert result == ""

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 from typing import Optional, Protocol
+from zoneinfo import ZoneInfo
 
 from bot.services.github.domain import GitHubIssue
+from bot.services.google_calendar.domain import GoogleCalendarEvent
 from bot.services.ticktick.domain import SubTaskStatus, TickTickTask
 
 logger = logging.getLogger(__name__)
@@ -26,6 +29,23 @@ class TaskSource(Protocol):
     def source_name(self) -> str: ...
 
     async def fetch_and_format(self) -> TaskSourceResult: ...
+
+
+@dataclass(frozen=True)
+class ContextSourceResult:
+    """Result from a context source: schedule/constraint info for LLM."""
+
+    source_name: str
+    prompt_section: str
+
+
+class ContextSource(Protocol):
+    """Protocol for pluggable context data sources (schedule, constraints)."""
+
+    @property
+    def source_name(self) -> str: ...
+
+    async def fetch_and_format(self) -> ContextSourceResult: ...
 
 
 class TickTickTaskSource:
@@ -127,8 +147,110 @@ class GitHubTaskSource:
         )
 
 
+class GoogleCalendarContextSource:
+    """Adapter: GoogleCalendarRepository -> ContextSource."""
+
+    def __init__(
+        self,
+        repository,
+        calendar_context: str,
+        timezone: str,
+        today: date | None = None,
+    ):
+        self._repo = repository
+        self._calendar_context = calendar_context
+        self._timezone = timezone
+        self._today = today
+
+    @property
+    def source_name(self) -> str:
+        return "google_calendar"
+
+    async def fetch_and_format(self) -> ContextSourceResult:
+        tz = ZoneInfo(self._timezone)
+        today = self._today or datetime.now(tz).date()
+
+        # Calculate time range: start of today to end of Sunday
+        time_min = datetime(today.year, today.month, today.day, tzinfo=tz)
+        days_until_sunday = 6 - today.weekday()  # Monday=0, Sunday=6
+        if days_until_sunday == 0:
+            days_until_sunday = 7  # If today is Sunday, get next week
+        end_date = today + timedelta(days=days_until_sunday + 1)
+        time_max = datetime(end_date.year, end_date.month, end_date.day, tzinfo=tz)
+
+        events = await self._repo.fetch_events(time_min=time_min, time_max=time_max)
+        return self._format_events(events, today, tz)
+
+    def _format_events(
+        self,
+        events: list[GoogleCalendarEvent],
+        today: date,
+        tz: ZoneInfo,
+    ) -> ContextSourceResult:
+        today_events = []
+        week_events: dict[date, list[GoogleCalendarEvent]] = {}
+
+        for event in events:
+            event_date = (
+                event.start.astimezone(tz).date()
+                if not event.is_all_day
+                else event.start.date()
+            )
+            if event_date == today:
+                today_events.append(event)
+            else:
+                week_events.setdefault(event_date, []).append(event)
+
+        # Sort events by start time within each group
+        today_events.sort(key=lambda e: e.start)
+        for d in week_events:
+            week_events[d].sort(key=lambda e: e.start)
+
+        lines: list[str] = []
+
+        # Today's schedule (detailed)
+        weekday_names = ["月", "火", "水", "木", "金", "土", "日"]
+        weekday = weekday_names[today.weekday()]
+        lines.append(f"## 今日のスケジュール ({today.isoformat()} {weekday}曜日)")
+        if today_events:
+            for event in today_events:
+                lines.append(self._format_event_line(event, tz))
+        else:
+            lines.append("予定なし")
+
+        # Rest of week (overview)
+        if week_events:
+            lines.append("")
+            lines.append("## 今週の残りのスケジュール概要")
+            for event_date in sorted(week_events.keys()):
+                weekday = weekday_names[event_date.weekday()]
+                lines.append(f"### {event_date.month}/{event_date.day} ({weekday})")
+                for event in week_events[event_date]:
+                    lines.append(self._format_event_line(event, tz))
+
+        # Calendar context (interpretation rules)
+        if self._calendar_context:
+            lines.append("")
+            lines.append("## カレンダーの解釈ルール")
+            lines.append(self._calendar_context.strip())
+
+        return ContextSourceResult(
+            source_name="google_calendar",
+            prompt_section="\n".join(lines),
+        )
+
+    @staticmethod
+    def _format_event_line(event: GoogleCalendarEvent, tz: ZoneInfo) -> str:
+        cal_name = event.calendar.summary
+        if event.is_all_day:
+            return f"- 終日 [{cal_name}] {event.summary}"
+        start = event.start.astimezone(tz)
+        end = event.end.astimezone(tz)
+        return f"- {start.strftime('%H:%M')}-{end.strftime('%H:%M')} [{cal_name}] {event.summary}"
+
+
 class DailyPlanPromptBuilder:
-    """Assembles the final LLM prompt from task source sections."""
+    """Assembles the final LLM prompt from task and context source sections."""
 
     @staticmethod
     def build_prompt(
@@ -136,6 +258,7 @@ class DailyPlanPromptBuilder:
         date_str: str,
         existing_messages: Optional[list[str]] = None,
         language: str = "ja",
+        context_sections: Optional[list[ContextSourceResult]] = None,
     ) -> str:
         prompt_parts = [
             f"You are a personal productivity assistant. Create a structured daily plan for {date_str}.",
@@ -146,6 +269,22 @@ class DailyPlanPromptBuilder:
             "Group related tasks and suggest a logical order for the day.",
             "",
         ]
+
+        # Context sections (schedule/constraints) come first
+        if context_sections:
+            prompt_parts.append(
+                "以下のスケジュールとカレンダー解釈ルールを考慮して、実現可能な計画を立ててください。"
+            )
+            prompt_parts.append(
+                "空き時間を把握し、タスクを現実的にスケジュールしてください。"
+            )
+            prompt_parts.append("")
+            prompt_parts.append("--- Schedule Context ---")
+            for ctx in context_sections:
+                prompt_parts.append(ctx.prompt_section)
+                prompt_parts.append("")
+            prompt_parts.append("--- End of Schedule Context ---")
+            prompt_parts.append("")
 
         if existing_messages:
             prompt_parts.append("--- Previous messages in today's thread ---")
