@@ -17,7 +17,7 @@ class TestDailyPlanConfigRepository:
         assert config.thread_format == "{date} 日報"
         assert config.schedule_hour == 7
         assert config.schedule_minute == 0
-        assert config.llm_model == "gemini/gemini-3.1-pro-preview"
+        assert config.llm_model == "gemini/gemini-2.5-flash"
         assert config.timezone == "Asia/Tokyo"
         assert config.sources == ("ticktick", "github")
 

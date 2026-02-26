@@ -20,7 +20,7 @@ class DailyPlanConfig:
     thread_format: str = "{date} 日報"
     schedule_hour: int = 7
     schedule_minute: int = 0
-    llm_model: str = "gemini/gemini-3.1-pro-preview"
+    llm_model: str = "gemini/gemini-2.5-flash"
     timezone: str = "Asia/Tokyo"
     sources: tuple[str, ...] = ("ticktick", "github")
 
@@ -71,7 +71,7 @@ class DailyPlanConfigRepository:
             schedule_hour=int(os.environ.get("DAILY_PLAN_SCHEDULE_HOUR", "7")),
             schedule_minute=int(os.environ.get("DAILY_PLAN_SCHEDULE_MINUTE", "0")),
             llm_model=os.environ.get(
-                "DAILY_PLAN_LLM_MODEL", "gemini/gemini-3.1-pro-preview"
+                "DAILY_PLAN_LLM_MODEL", "gemini/gemini-2.5-flash"
             ),
             timezone=os.environ.get("DAILY_PLAN_TIMEZONE", "Asia/Tokyo"),
             sources=tuple(s.strip() for s in sources_str.split(",") if s.strip()),
