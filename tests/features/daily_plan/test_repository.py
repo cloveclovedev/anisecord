@@ -148,18 +148,44 @@ class TestLoadCalendarContext:
         result = load_calendar_context(toml_file)
         assert result == "cloveclove is personal business."
 
-    def test_returns_empty_when_file_missing(self, tmp_path):
+    def test_falls_back_to_env_when_file_missing(self, tmp_path):
         from bot.features.daily_plan.repository import load_calendar_context
 
-        result = load_calendar_context(tmp_path / "nonexistent.toml")
-        assert result == ""
+        with patch.dict(
+            os.environ, {"DAILY_PLAN_CALENDAR_CONTEXT": "env context"}, clear=False
+        ):
+            result = load_calendar_context(tmp_path / "nonexistent.toml")
+        assert result == "env context"
 
-    def test_returns_empty_when_no_calendar_section(self, tmp_path):
+    def test_falls_back_to_env_when_no_calendar_section(self, tmp_path):
         toml_content = b'[other]\nkey = "value"'
         toml_file = tmp_path / "config.toml"
         toml_file.write_bytes(toml_content)
 
         from bot.features.daily_plan.repository import load_calendar_context
 
-        result = load_calendar_context(toml_file)
+        with patch.dict(
+            os.environ, {"DAILY_PLAN_CALENDAR_CONTEXT": "env fallback"}, clear=False
+        ):
+            result = load_calendar_context(toml_file)
+        assert result == "env fallback"
+
+    def test_returns_empty_when_no_file_and_no_env(self, tmp_path):
+        from bot.features.daily_plan.repository import load_calendar_context
+
+        with patch.dict(os.environ, {}, clear=True):
+            result = load_calendar_context(tmp_path / "nonexistent.toml")
         assert result == ""
+
+    def test_toml_takes_priority_over_env(self, tmp_path):
+        toml_content = b'[calendar]\ncontext = "from toml"'
+        toml_file = tmp_path / "config.toml"
+        toml_file.write_bytes(toml_content)
+
+        from bot.features.daily_plan.repository import load_calendar_context
+
+        with patch.dict(
+            os.environ, {"DAILY_PLAN_CALENDAR_CONTEXT": "from env"}, clear=False
+        ):
+            result = load_calendar_context(toml_file)
+        assert result == "from toml"
