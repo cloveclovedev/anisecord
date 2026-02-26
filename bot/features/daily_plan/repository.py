@@ -97,14 +97,19 @@ class DailyPlanConfigRepository:
 
 
 def load_calendar_context(config_path: Path) -> str:
-    """Load calendar interpretation rules from TOML config file."""
+    """Load calendar interpretation rules from TOML file or environment variable.
+
+    Priority: TOML file > DAILY_PLAN_CALENDAR_CONTEXT env var.
+    """
     try:
         with open(config_path, "rb") as f:
             data = tomllib.load(f)
-        return data.get("calendar", {}).get("context", "")
+        context = data.get("calendar", {}).get("context", "")
+        if context:
+            return context
     except FileNotFoundError:
-        logger.warning("Config file not found: %s", config_path)
-        return ""
+        logger.debug("Config file not found: %s, checking env var", config_path)
     except tomllib.TOMLDecodeError:
-        logger.warning("Failed to parse TOML: %s", config_path)
-        return ""
+        logger.warning("Failed to parse TOML: %s, checking env var", config_path)
+
+    return os.environ.get("DAILY_PLAN_CALENDAR_CONTEXT", "")
