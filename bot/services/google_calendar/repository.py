@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from typing import Any
+from urllib.parse import quote
 
 import aiohttp
 
@@ -57,7 +58,7 @@ class GoogleCalendarRepository:
         while True:
             data = await self._request(
                 "GET",
-                f"/calendars/{calendar.id}/events",
+                f"/calendars/{quote(calendar.id, safe='')}/events",
                 params=params,
             )
 

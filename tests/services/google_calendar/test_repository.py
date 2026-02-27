@@ -74,6 +74,47 @@ class TestFetchCalendars:
         assert calendars[1].summary == "mkuri"
 
 
+class TestFetchEventsWithSpecialCalendarId:
+    async def test_calendar_id_with_hash_is_url_encoded(self):
+        """Calendar IDs like 'ja.japanese#holiday@group.v.calendar.google.com'
+        contain '#' which must be percent-encoded in the URL path."""
+        repo = GoogleCalendarRepository(make_auth())
+        time_min = datetime(2026, 2, 23, 0, 0, tzinfo=JST)
+        time_max = datetime(2026, 3, 1, 0, 0, tzinfo=JST)
+
+        cal_id = "ja.japanese#holiday@group.v.calendar.google.com"
+        encoded_id = "ja.japanese%23holiday@group.v.calendar.google.com"
+
+        cal_list = {
+            "kind": "calendar#calendarList",
+            "items": [{"id": cal_id, "summary": "Holidays"}],
+        }
+        events_payload = {
+            "kind": "calendar#events",
+            "items": [
+                {
+                    "id": "ev1",
+                    "summary": "National Holiday",
+                    "status": "confirmed",
+                    "start": {"date": "2026-02-23"},
+                    "end": {"date": "2026-02-24"},
+                },
+            ],
+        }
+
+        with aioresponses() as m:
+            m.get(f"{API_BASE}/users/me/calendarList", payload=cal_list)
+            m.get(
+                re.compile(rf"{API_BASE}/calendars/{re.escape(encoded_id)}/events.*"),
+                payload=events_payload,
+            )
+            events = await repo.fetch_events(time_min=time_min, time_max=time_max)
+
+        assert len(events) == 1
+        assert events[0].summary == "National Holiday"
+        assert events[0].calendar.id == cal_id
+
+
 class TestFetchEvents:
     async def test_returns_events_from_all_calendars(self):
         repo = GoogleCalendarRepository(make_auth())
